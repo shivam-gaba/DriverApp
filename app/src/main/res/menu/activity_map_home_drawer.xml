@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:showIn="navigation_view">
+        <item
+            android:id="@+id/driverProfile"
+            android:icon="@drawable/profile_icon"
+            android:title="My Profile"
+            >
+        </item>
+
+        <item
+            android:id="@+id/bins"
+            android:icon="@drawable/bin"
+            android:title="Garbage bins"
+            >
+        </item>
+        <item
+            android:id="@+id/logOut"
+            android:icon="@drawable/log_out"
+            android:title="Log out"
+            >
+        </item>
+</menu>
