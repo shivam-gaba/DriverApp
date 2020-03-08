@@ -1,27 +1,27 @@
 package com.shivam_gaba;
 
 public class liveLocation {
-    public double lat;
-    public double lng;
+    public double liveLat;
+    public double liveLng;
 
-    public liveLocation(double lat, double lng) {
-        this.lat = lat;
-        this.lng = lng;
+    public liveLocation(double liveLat, double liveLng) {
+        this.liveLat = liveLat;
+        this.liveLng = liveLng;
     }
 
-    public double getLat() {
-        return lat;
+    public double getLiveLat() {
+        return liveLat;
     }
 
-    public void setLat(double lat) {
-        this.lat = lat;
+    public void setLiveLat(double liveLat) {
+        this.liveLat = liveLat;
     }
 
-    public double getLng() {
-        return lng;
+    public double getLiveLng() {
+        return liveLng;
     }
 
-    public void setLng(double lng) {
-        this.lng = lng;
+    public void setLiveLng(double liveLng) {
+        this.liveLng = liveLng;
     }
 }

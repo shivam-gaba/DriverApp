@@ -30,7 +30,6 @@ public class BinAdapter extends RecyclerView.Adapter<BinAdapter.ViewHolder> {
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder {
-
         TextView tvAddress, tvBinLevel;
 
         public ViewHolder(@NonNull View itemView) {
@@ -52,7 +51,6 @@ public class BinAdapter extends RecyclerView.Adapter<BinAdapter.ViewHolder> {
     @Override
     public void onBindViewHolder(@NonNull BinAdapter.ViewHolder holder, int position) {
         holder.itemView.setTag(binList.get(position));
-
 
         Geocoder geocoder = new Geocoder(context, Locale.getDefault());
         List<Address> addresses = null;

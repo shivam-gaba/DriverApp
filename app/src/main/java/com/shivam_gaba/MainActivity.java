@@ -10,6 +10,7 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -21,10 +22,15 @@ import com.google.android.gms.tasks.Task;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import dmax.dialog.SpotsDialog;
 
 public class MainActivity extends AppCompatActivity {
+
 
     RelativeLayout root_layout;
     TextView tvLogin, tvForgot;
@@ -36,12 +42,17 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+
         tvLogin = findViewById(R.id.tvLogin);
         tvForgot = findViewById(R.id.tvForgot);
         etPassword = findViewById(R.id.etPassword);
         etEmail = findViewById(R.id.etEmail);
         root_layout = findViewById(R.id.root_layout);
 
+
+        if(FirebaseAuth.getInstance().getCurrentUser()!=null) {
+            etEmail.setText(FirebaseAuth.getInstance().getCurrentUser().getEmail());
+        }
 
         mAuth = FirebaseAuth.getInstance();
 
@@ -156,9 +167,5 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        if (mAuth.getCurrentUser() != null) {
-            startActivity(new Intent(this, MapHome.class));
-            finish();
-        }
     }
 }

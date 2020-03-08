@@ -1,8 +1,10 @@
 package com.shivam_gaba;
 
+import android.Manifest;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
@@ -19,6 +21,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.cardview.widget.CardView;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 
 import com.bumptech.glide.Glide;
@@ -100,9 +104,11 @@ public class MapHome extends AppCompatActivity implements NavigationView.OnNavig
 
     ArrayList<marker> markers = new ArrayList<marker>();
 
-    public String driverName, driverPhoneNumber, emailId, truckNumber, driverPicUrl,truckTrashLevel;
+    public String driverName, driverPhoneNumber, emailId, truckNumber, driverPicUrl, truckTrashLevel;
 
-    int totalFlag=1;
+    int totalFlag = 1;
+    Timer t;
+
 
     DatabaseReference mDatabaseReference;
 
@@ -136,11 +142,12 @@ public class MapHome extends AppCompatActivity implements NavigationView.OnNavig
         toggle.syncState();
         navigationView.setNavigationItemSelectedListener(this);
 
+        truckNumber = "0";
+        truckTrashLevel = "0";
+
         mapView = findViewById(R.id.mapView);
         mapView.onCreate(savedInstanceState);
         mapView.getMapAsync(this);
-
-        FirebaseDatabase.getInstance().setPersistenceEnabled(true);
 
         cardNavView = findViewById(R.id.cardNavView);
         btnNavigate = findViewById(R.id.btnNavigate);
@@ -178,7 +185,6 @@ public class MapHome extends AppCompatActivity implements NavigationView.OnNavig
             public void run() {
                 if (alertDialog.isShowing()) {
                     alertDialog.dismiss();
-
                     addMarkersFromDatabase();
                 }
             }
@@ -193,46 +199,52 @@ public class MapHome extends AppCompatActivity implements NavigationView.OnNavig
         });
     }
 
-
     private void updateLiveLocationsToDatabase() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        ) {
 
-        Timer t = new Timer();
-//Set the schedule function and rate
-        t.scheduleAtFixedRate(new TimerTask() {
+            t = new Timer();
+            t.scheduleAtFixedRate(new TimerTask() {
 
-            @Override
-            public void run() {
-                liveLat = locationComponent.getLastKnownLocation().getLatitude();
-                liveLng = locationComponent.getLastKnownLocation().getLongitude();
-                FirebaseDatabase firebaseDatabase;
+                @Override
+                public void run() {
+                    liveLat = locationComponent.getLastKnownLocation().getLatitude();
+                    liveLng = locationComponent.getLastKnownLocation().getLongitude();
+                    FirebaseDatabase firebaseDatabase;
 
-                if (FirebaseAuth.getInstance().getCurrentUser() != null) {
-                    firebaseDatabase = FirebaseDatabase.getInstance();
-                    mDatabaseReference = firebaseDatabase.getReferenceFromUrl("https://driver-app-846b7.firebaseio.com/" + FirebaseAuth.getInstance().getCurrentUser().getUid() + "/liveLocation");
+                    if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+                        firebaseDatabase = FirebaseDatabase.getInstance();
+                        mDatabaseReference = firebaseDatabase.getReferenceFromUrl("https://driver-app-9e22d.firebaseio.com/Managers");
 
-                    liveLocation l = new liveLocation(liveLat, liveLng);
+                        mDatabaseReference.addListenerForSingleValueEvent(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                                for (DataSnapshot keyNode : dataSnapshot.getChildren()) {
 
-                    mDatabaseReference.removeValue().addOnSuccessListener(new OnSuccessListener<Void>() {
-                        @Override
-                        public void onSuccess(Void aVoid) {
-                            mDatabaseReference.push().setValue(l);
-                        }
-                    })
-                            .addOnFailureListener(new OnFailureListener() {
-                                @Override
-                                public void onFailure(@NonNull Exception e) {
-                                    Toast.makeText(MapHome.this, "Location update to manager failed!", Toast.LENGTH_SHORT).show();
+                                    if (keyNode.hasChild(FirebaseAuth.getInstance().getCurrentUser().getUid())) {
+                                        keyNode.child(FirebaseAuth.getInstance().getCurrentUser().getUid())
+                                                .child("liveLocation").getRef().setValue(new liveLocation(liveLat, liveLng));
+                                    }
+
                                 }
-                            });
+                            }
+
+                            @Override
+                            public void onCancelled(@NonNull DatabaseError databaseError) {
+                                Toast.makeText(MapHome.this, "Error: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
                 }
-            }
-        }, 0, 5000);
+            }, 0, 10000);
+        } else {
+            return;
+        }
     }
 
 
     //  Ui functions====================================================================================================
-
-
 
 
     private void showMarkerInfoDialog() {
@@ -315,28 +327,28 @@ public class MapHome extends AppCompatActivity implements NavigationView.OnNavig
         }
     }
 
-
     private void getDetailsFromDatabase() {
 
         ArrayList<driver> driverList = new ArrayList<>();
 
         FirebaseDatabase database = FirebaseDatabase.getInstance();
-        DatabaseReference driverReference = database.getReferenceFromUrl("https://driver-app-846b7.firebaseio.com/" + FirebaseAuth.getInstance().getCurrentUser().getUid());
+        DatabaseReference driverReference = database.getReferenceFromUrl("https://driver-app-9e22d.firebaseio.com/Managers");
         driverReference.addListenerForSingleValueEvent(new ValueEventListener() {
 
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-
                 for (DataSnapshot keyNode : dataSnapshot.getChildren()) {
-                    driver d = keyNode.getValue(driver.class);
-                    driverList.add(d);
+                    if (keyNode.hasChild(FirebaseAuth.getInstance().getCurrentUser().getUid() + "/driver")) {
+                        driver d = keyNode.child(FirebaseAuth.getInstance().getCurrentUser().getUid() + "/driver").getValue(driver.class);
+                        driverList.add(d);
+                    }
                 }
 
-                driverName = driverList.get(1).getDriverName();
-                driverPhoneNumber = driverList.get(1).getDriverPhoneNumber();
-                truckNumber = driverList.get(1).getTruckNumber();
-                emailId = driverList.get(1).getEmailId();
-                driverPicUrl = driverList.get(1).getDriverPicUrl();
+                driverName = driverList.get(0).getDriverName();
+                driverPhoneNumber = driverList.get(0).getDriverPhoneNumber();
+                truckNumber = driverList.get(0).getTruckNumber();
+                emailId = driverList.get(0).getEmailId();
+                driverPicUrl = driverList.get(0).getDriverPicUrl();
 
                 Intent profileIntent = new Intent(MapHome.this, Profile.class);
                 profileIntent.putExtra("driverName", driverName);
@@ -358,15 +370,13 @@ public class MapHome extends AppCompatActivity implements NavigationView.OnNavig
         });
     }
 
-
     private void addMarkersFromDatabase() {
 
         FirebaseDatabase database = FirebaseDatabase.getInstance();
-        DatabaseReference markerReference = database.getReferenceFromUrl("https://driver-app-846b7.firebaseio.com/" + FirebaseAuth.getInstance().getCurrentUser().getUid() + "/Markers");
-        DatabaseReference driverReference = database.getReferenceFromUrl("https://driver-app-846b7.firebaseio.com/" + FirebaseAuth.getInstance().getCurrentUser().getUid());
+        DatabaseReference markerReference = database.getReferenceFromUrl("https://driver-app-9e22d.firebaseio.com/Managers");
+        DatabaseReference driverReference = database.getReferenceFromUrl("https://driver-app-9e22d.firebaseio.com/Managers");
 
         markerReference.addValueEventListener(new ValueEventListener() {
-
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
@@ -375,39 +385,42 @@ public class MapHome extends AppCompatActivity implements NavigationView.OnNavig
                 mapboxMap.clear();
                 mapboxMap.removeAnnotations();
 
-                for (DataSnapshot keyNode : dataSnapshot.getChildren()){
-                    marker m = keyNode.getValue(marker.class);
-                    markers.add(m);
+
+                    for (DataSnapshot parentNode : dataSnapshot.getChildren()) {
+
+                        DataSnapshot childNode = parentNode.child(FirebaseAuth.getInstance().getCurrentUser().getUid() + "/Markers");
+
+                        for (DataSnapshot keyNode : childNode.getChildren()) {
+                            marker m = keyNode.getValue(marker.class);
+                            markers.add(m);
+                        }
+
+                        binsLeft = markers.size();
+                        tvBinsLeft.setText(binsLeft + "");
+
+                        if (totalFlag == 1) {
+                            totalBins = markers.size();
+                            totalFlag = 0;
+                        }
+                        binsCleared = binsLeft > totalBins ? 0 : totalBins - binsLeft;
+                        tvBinsCleared.setText(binsCleared + "");
+
+                        ArrayList<Double> lat = new ArrayList<Double>();
+                        ArrayList<Double> lng = new ArrayList<Double>();
+
+                        for (int i = 0; i < markers.size(); i++) {
+                            lat.add(markers.get(i).getLat());
+                            lng.add(markers.get(i).getLng());
+                        }
+
+                        for (int i = 0; i < markers.size(); i++) {
+
+                            MarkerOptions markerOptions = new MarkerOptions()
+                                    .position(new LatLng(lat.get(i), lng.get(i)));
+                            mapboxMap.addMarker(markerOptions);
+                        }
+                    }
                 }
-
-                //showMarkersPolyLine();
-
-                binsLeft = markers.size();
-                tvBinsLeft.setText(binsLeft + "");
-
-                if(totalFlag==1)
-                {
-                    totalBins = markers.size();
-                    totalFlag=0;
-                }
-                binsCleared=binsLeft>totalBins?0:totalBins - binsLeft;
-                tvBinsCleared.setText(binsCleared + "");
-
-                ArrayList<Double> lat = new ArrayList<Double>();
-                ArrayList<Double> lng = new ArrayList<Double>();
-
-                for (int i = 0; i < markers.size(); i++) {
-                    lat.add(markers.get(i).getLat());
-                    lng.add(markers.get(i).getLng());
-                }
-
-                for (int i = 0; i < markers.size(); i++) {
-
-                    MarkerOptions markerOptions = new MarkerOptions()
-                            .position(new LatLng(lat.get(i), lng.get(i)));
-                    mapboxMap.addMarker(markerOptions);
-                }
-            }
 
             @Override
             public void onCancelled(@NonNull DatabaseError databaseError) {
@@ -415,22 +428,24 @@ public class MapHome extends AppCompatActivity implements NavigationView.OnNavig
             }
         });
 
-
-        ArrayList<driver> driverList=new ArrayList<>();
+        ArrayList<driver> driverList = new ArrayList<>();
         driverReference.addListenerForSingleValueEvent(new ValueEventListener() {
 
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
                 for (DataSnapshot keyNode : dataSnapshot.getChildren()) {
-                    driver d = keyNode.getValue(driver.class);
-                    driverList.add(d);
+                    if (keyNode.hasChild(FirebaseAuth.getInstance().getCurrentUser().getUid() + "/driver")) {
+                        driver d = keyNode.child(FirebaseAuth.getInstance().getCurrentUser().getUid() + "/driver").getValue(driver.class);
+                        driverList.add(d);
+                    }
                 }
 
-                truckNumber = driverList.get(1).getTruckNumber();
-                truckTrashLevel=driverList.get(1).getTruckTrashLevel();
-
-                tvTruckTrashLevel.setText(truckTrashLevel+"%");
+                if (!driverList.isEmpty()) {
+                    truckNumber = driverList.get(0).getTruckNumber();
+                    truckTrashLevel = driverList.get(0).getTruckTrashLevel();
+                }
+                tvTruckTrashLevel.setText(truckTrashLevel + "%");
                 tvTruckNumber.setText(truckNumber);
             }
 
@@ -439,25 +454,28 @@ public class MapHome extends AppCompatActivity implements NavigationView.OnNavig
                 Toast.makeText(getApplicationContext(), "ERROR: " + databaseError.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
-
     }
+
     private void putMarkersToIntent() {
         ArrayList<marker> markersListForIntent = new ArrayList<>();
         FirebaseDatabase database = FirebaseDatabase.getInstance();
-        DatabaseReference markerReference = database.getReferenceFromUrl("https://driver-app-846b7.firebaseio.com/" + FirebaseAuth.getInstance().getCurrentUser().getUid() + "/Markers");
+        DatabaseReference markerReference = database.getReferenceFromUrl("https://driver-app-9e22d.firebaseio.com/Managers");
         markerReference.addListenerForSingleValueEvent(new ValueEventListener() {
 
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
                 markersListForIntent.clear();
-                for (DataSnapshot keyNode : dataSnapshot.getChildren()) {
-                    marker m = keyNode.getValue(marker.class);
-                    markersListForIntent.add(m);
+                for (DataSnapshot parentNode : dataSnapshot.getChildren()) {
+                    DataSnapshot childNode = parentNode.child(FirebaseAuth.getInstance().getCurrentUser().getUid() + "/Markers");
+                    for (DataSnapshot keyNode : childNode.getChildren()) {
+                        marker m = keyNode.getValue(marker.class);
+                        markersListForIntent.add(m);
+                    }
                 }
-                Intent intent = new Intent(MapHome.this, BinsActivity.class);
-                intent.putExtra("markers", (Serializable) markersListForIntent);
-                startActivity(intent);
+                    Intent intent = new Intent(MapHome.this, BinsActivity.class);
+                    intent.putExtra("markers", (Serializable) markersListForIntent);
+                    startActivity(intent);
             }
 
             @Override
@@ -478,6 +496,7 @@ public class MapHome extends AppCompatActivity implements NavigationView.OnNavig
 
             try {
                 mapboxMap.setOnMarkerClickListener(marker -> {
+                    updateLiveLocationsToDatabase();
                     startLatLng = new LatLng(locationComponent.getLastKnownLocation().getLatitude(), locationComponent.getLastKnownLocation().getLongitude());
                     endLatLng = marker.getPosition();
                     showMarkerInfoDialog();
@@ -592,6 +611,7 @@ public class MapHome extends AppCompatActivity implements NavigationView.OnNavig
     @Override
     @SuppressWarnings({"MissingPermission"})
     protected void onStart() {
+
         super.onStart();
         mapView.onStart();
     }
@@ -606,13 +626,26 @@ public class MapHome extends AppCompatActivity implements NavigationView.OnNavig
     protected void onPause() {
         super.onPause();
         mapView.onPause();
-
     }
 
     @Override
     protected void onStop() {
         super.onStop();
         mapView.onStop();
+        t.cancel();
+        FirebaseDatabase.getInstance().getReference().child("Managers").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                for (DataSnapshot keyNode : dataSnapshot.getChildren()) {
+                    keyNode.child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child("liveLocation").getRef().removeValue();
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                Toast.makeText(MapHome.this, "Error: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     @Override
@@ -625,6 +658,21 @@ public class MapHome extends AppCompatActivity implements NavigationView.OnNavig
     protected void onDestroy() {
         super.onDestroy();
         mapView.onDestroy();
+
+        t.cancel();
+        FirebaseDatabase.getInstance().getReference().child("Managers").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                for (DataSnapshot keyNode : dataSnapshot.getChildren()) {
+                    keyNode.child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child("liveLocation").getRef().removeValue();
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                Toast.makeText(MapHome.this, "Error: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     @Override
@@ -672,7 +720,20 @@ public class MapHome extends AppCompatActivity implements NavigationView.OnNavig
 
         switch (id) {
             case R.id.logOut:
-                FirebaseAuth.getInstance().signOut();
+                t.cancel();
+                FirebaseDatabase.getInstance().getReference().child("Managers").addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        for (DataSnapshot keyNode : dataSnapshot.getChildren()) {
+                            keyNode.child(FirebaseAuth.getInstance().getCurrentUser().getUid()).child("liveLocation").getRef().removeValue();
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
+                        Toast.makeText(MapHome.this, "Error: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
                 startActivity(new Intent(MapHome.this, MainActivity.class));
                 MapHome.this.finish();
                 break;
