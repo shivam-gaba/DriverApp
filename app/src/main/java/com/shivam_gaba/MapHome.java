@@ -8,26 +8,28 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
-import android.location.LocationManager;
-import android.location.LocationProvider;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Parcelable;
 import android.view.LayoutInflater;
+import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.cardview.widget.CardView;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
 
-import com.bumptech.glide.Glide;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
@@ -41,9 +43,7 @@ import com.mapbox.api.directions.v5.models.DirectionsResponse;
 import com.mapbox.api.directions.v5.models.DirectionsRoute;
 import com.mapbox.geojson.Point;
 import com.mapbox.mapboxsdk.Mapbox;
-import com.mapbox.mapboxsdk.annotations.Marker;
 import com.mapbox.mapboxsdk.annotations.MarkerOptions;
-import com.mapbox.mapboxsdk.annotations.PolylineOptions;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.geometry.LatLngBounds;
@@ -55,23 +55,10 @@ import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.mapboxsdk.maps.Style;
-import com.mapbox.mapboxsdk.style.layers.LineLayer;
-import com.mapbox.mapboxsdk.style.layers.Property;
 import com.mapbox.services.android.navigation.ui.v5.NavigationLauncher;
 import com.mapbox.services.android.navigation.ui.v5.NavigationLauncherOptions;
 import com.mapbox.services.android.navigation.ui.v5.route.NavigationMapRoute;
 import com.mapbox.services.android.navigation.v5.navigation.NavigationRoute;
-
-import androidx.drawerlayout.widget.DrawerLayout;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-
-import android.view.Menu;
-import android.view.View;
-import android.view.WindowManager;
-import android.widget.Button;
-import android.widget.TextView;
-import android.widget.Toast;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -86,12 +73,6 @@ import dmax.dialog.SpotsDialog;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
-
-import static com.mapbox.mapboxsdk.style.expressions.Expression.eq;
-import static com.mapbox.mapboxsdk.style.expressions.Expression.literal;
-import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.lineCap;
-import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.lineColor;
-import static com.mapbox.mapboxsdk.style.layers.PropertyFactory.lineWidth;
 
 public class MapHome extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, OnMapReadyCallback, PermissionsListener {
 
@@ -136,6 +117,7 @@ public class MapHome extends AppCompatActivity implements NavigationView.OnNavig
         setSupportActionBar(toolbar);
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         final NavigationView navigationView = findViewById(R.id.nav_view);
+
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                 this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
         drawer.addDrawerListener(toggle);
@@ -386,41 +368,41 @@ public class MapHome extends AppCompatActivity implements NavigationView.OnNavig
                 mapboxMap.removeAnnotations();
 
 
-                    for (DataSnapshot parentNode : dataSnapshot.getChildren()) {
+                for (DataSnapshot parentNode : dataSnapshot.getChildren()) {
 
-                        DataSnapshot childNode = parentNode.child(FirebaseAuth.getInstance().getCurrentUser().getUid() + "/Markers");
+                    DataSnapshot childNode = parentNode.child(FirebaseAuth.getInstance().getCurrentUser().getUid() + "/Markers");
 
-                        for (DataSnapshot keyNode : childNode.getChildren()) {
-                            marker m = keyNode.getValue(marker.class);
-                            markers.add(m);
-                        }
+                    for (DataSnapshot keyNode : childNode.getChildren()) {
+                        marker m = keyNode.getValue(marker.class);
+                        markers.add(m);
+                    }
 
-                        binsLeft = markers.size();
-                        tvBinsLeft.setText(binsLeft + "");
+                    binsLeft = markers.size();
+                    tvBinsLeft.setText(binsLeft + "");
 
-                        if (totalFlag == 1) {
-                            totalBins = markers.size();
-                            totalFlag = 0;
-                        }
-                        binsCleared = binsLeft > totalBins ? 0 : totalBins - binsLeft;
-                        tvBinsCleared.setText(binsCleared + "");
+                    if (totalFlag == 1) {
+                        totalBins = markers.size();
+                        totalFlag = 0;
+                    }
+                    binsCleared = binsLeft > totalBins ? 0 : totalBins - binsLeft;
+                    tvBinsCleared.setText(binsCleared + "");
 
-                        ArrayList<Double> lat = new ArrayList<Double>();
-                        ArrayList<Double> lng = new ArrayList<Double>();
+                    ArrayList<Double> lat = new ArrayList<Double>();
+                    ArrayList<Double> lng = new ArrayList<Double>();
 
-                        for (int i = 0; i < markers.size(); i++) {
-                            lat.add(markers.get(i).getLat());
-                            lng.add(markers.get(i).getLng());
-                        }
+                    for (int i = 0; i < markers.size(); i++) {
+                        lat.add(markers.get(i).getLat());
+                        lng.add(markers.get(i).getLng());
+                    }
 
-                        for (int i = 0; i < markers.size(); i++) {
+                    for (int i = 0; i < markers.size(); i++) {
 
-                            MarkerOptions markerOptions = new MarkerOptions()
-                                    .position(new LatLng(lat.get(i), lng.get(i)));
-                            mapboxMap.addMarker(markerOptions);
-                        }
+                        MarkerOptions markerOptions = new MarkerOptions()
+                                .position(new LatLng(lat.get(i), lng.get(i)));
+                        mapboxMap.addMarker(markerOptions);
                     }
                 }
+            }
 
             @Override
             public void onCancelled(@NonNull DatabaseError databaseError) {
@@ -473,9 +455,9 @@ public class MapHome extends AppCompatActivity implements NavigationView.OnNavig
                         markersListForIntent.add(m);
                     }
                 }
-                    Intent intent = new Intent(MapHome.this, BinsActivity.class);
-                    intent.putExtra("markers", (Serializable) markersListForIntent);
-                    startActivity(intent);
+                Intent intent = new Intent(MapHome.this, BinsActivity.class);
+                intent.putExtra("markers", (Serializable) markersListForIntent);
+                startActivity(intent);
             }
 
             @Override
